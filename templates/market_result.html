@@ -4,45 +4,106 @@
   <meta charset="UTF-8" />
   <title>Market Analysis Results</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 30px; }
+    h1, h2 { color: #222; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+      font-size: 0.9em;
+    }
+    th {
+      background-color: #f3f4f6;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.8em;
+    }
+    tr:hover { background-color: #fafafa; }
+    section { margin-bottom: 40px; }
+  </style>
 </head>
 <body>
   <nav>
     <a href="{{ url_for('index') }}" class="nav-link">← Home</a>
-    <h1>Market Analysis</h1>
+    <h1>Market Analysis Results</h1>
   </nav>
 
-  <main class="result-container">
-    <section class="analysis-summary">
-      <h2>Summary Insights for {{ company }}</h2>
-      {% if comparables %}
-        <p>Comparables identified: {{ comparables|length }} companies</p>
-        <p>Average Valuation: ${{ avg_valuation }}M | Average ARR: ${{ avg_arr }}M</p>
-      {% else %}
-        <p>No comparable data found.</p>
-      {% endif %}
-    </section>
-
-    {% if comparables %}
-    <section class="table-section">
+  <main>
+    <!-- Section 1: Core Comparable Companies -->
+    <section>
       <h2>Comparable Companies</h2>
       <table>
         <thead>
           <tr>
             <th>Company</th>
-            <th>Valuation ($M)</th>
-            <th>ARR ($M)</th>
-            <th>Funding ($M)</th>
+            <th>Stage</th>
             <th>HQ</th>
+            <th>Industry</th>
+            <th>Revenue ($)</th>
+            <th>Valuation ($)</th>
+            <th>Capital Raised ($)</th>
           </tr>
         </thead>
         <tbody>
           {% for c in comparables %}
           <tr>
-            <td>{{ c.name }}</td>
-            <td>{{ c.valuation }}</td>
-            <td>{{ c.arr }}</td>
-            <td>{{ c.funding }}</td>
+            <td>{{ c.company }}</td>
+            <td>{{ c.stage }}</td>
             <td>{{ c.hq }}</td>
+            <td>{{ c.industry }}</td>
+            <td>{{ c.revenue_usd }}</td>
+            <td>{{ c.valuation_usd }}</td>
+            <td>{{ c.capital_raised_usd }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Section 2: Industry Insights -->
+    {% if stage_benchmarks %}
+    <section>
+      <h2>Industry Insights by Region</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Industry</th>
+            <th>Region</th>
+            <th>Avg Burn ($/mo)</th>
+            <th>Avg CAC ($)</th>
+            <th>Avg LTV ($)</th>
+            <th>Avg Runway (mo)</th>
+            <th>Avg Churn (%)</th>
+            <th>Avg Retention (%)</th>
+            <th>Avg TAM ($)</th>
+            <th>Avg SAM ($)</th>
+            <th>Avg SOM ($)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for industry, data in stage_benchmarks.items() %}
+          <tr>
+            <td>{{ industry }}</td>
+            <td>{{ data.get('region', '—') }}</td>
+            <td>{{ data.get('avg_burn_usd_month', '—') }}</td>
+            <td>{{ data.get('avg_cac_usd', '—') }}</td>
+            <td>{{ data.get('avg_ltv_usd', '—') }}</td>
+            <td>{{ data.get('avg_runway_months', '—') }}</td>
+            <td>{{ data.get('avg_churn_pct', '—') }}</td>
+            <td>{{ data.get('avg_retention_pct', '—') }}</td>
+            <td>{{ data.get('avg_tam_usd', '—') }}</td>
+            <td>{{ data.get('avg_sam_usd', '—') }}</td>
+            <td>{{ data.get('avg_som_usd', '—') }}</td>
           </tr>
           {% endfor %}
         </tbody>

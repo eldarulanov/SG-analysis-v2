@@ -150,83 +150,146 @@ Write a memo with:
 
 # --- Helper: Generate market analysis from uploaded deck ---
 def generate_market_analysis(deck_text):
-    """Generate market analysis with comparable companies from deck text."""
+    """
+    Generate market analysis with comparable companies and
+    aggregated industry-level insights by region.
+    """
     if not deck_text.strip():
         raise ValueError("No readable text could be extracted from the deck")
 
     prompt = f"""
 You are a venture capital analyst.
-Analyze the following startup pitch deck and identify 5 comparable companies.
-For each comparable, return numeric metrics as integers (no commas, no currency symbols).
+Analyze the following startup pitch deck and identify 5 comparable companies
+at different funding stages (Pre-Seed, Seed, Series A, etc.).
 
-Return ONLY valid JSON (nothing else).
-Use this exact structure:
+For each comparable, return structured data with:
 [
   {{
-    "name": "Company A",
-    "valuation_musd": 150,
-    "arr_musd": 10,
-    "funding_musd": 25,
-    "hq_country": "US"
+    "company": "Example Startup",
+    "stage": "Seed",
+    "hq": "US",
+    "industry": "FinTech",
+    "revenue_usd": 2500000,
+    "valuation_usd": 18000000,
+    "capital_raised_usd": 6000000,
+    "burn_rate_usd_month": 180000,
+    "runway_months": 12,
+    "churn_pct": 8,
+    "retention_pct": 92,
+    "cac_usd": 1200,
+    "ltv_usd": 15000,
+    "tam_usd": 5000000000,
+    "sam_usd": 1000000000,
+    "som_usd": 200000000
   }}
 ]
 
+Also include optional "stage_benchmarks" with averages for each funding stage.
+
+Return ONLY valid JSON — no text outside of JSON.
+
 Pitch Deck:
-\"\"\"{deck_text[:4000]}\"\"\"""".strip()
+\"\"\"{deck_text[:4000]}\"\"\"
+""".strip()
 
     def clean_json_output(text):
-        """Clean and extract JSON from model output."""
-        # Remove markdown fences and whitespace
+        """Extract JSON block safely from the GPT response."""
         text = re.sub(r"```(?:json)?", "", text).strip()
-        # Find JSON array
-        match = re.search(r"\[.*?\]", text, re.DOTALL)
+        match = re.search(r"\{.*\}|\[.*\]", text, re.DOTALL)
         if not match:
-            raise ValueError("No JSON array found in response")
-        # Clean the JSON string
+            raise ValueError("No JSON object found in response")
         json_str = match.group(0)
-        json_str = re.sub(r'(?<=\d),(?=\d)', '', json_str)  # Remove thousands separators
-        json_str = json_str.replace("'", '"')  # Fix quotes
+        json_str = json_str.replace("'", '"')
         return json_str
 
     try:
-        # First attempt
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
         text = _extract_response_text(response) or ""
-        
-        # Log raw output if debug enabled
+
         if DEBUG_AI_OUTPUT:
             with open(os.path.join(app.config["OUTPUT_FOLDER"], "logs", "market_analysis.txt"), "w", encoding="utf-8") as f:
                 f.write(text)
 
-        # Parse and validate response
+        # Parse JSON
         json_str = clean_json_output(text)
-        data = json.loads(json_str)
-        
-        # Validate structure
-        if not isinstance(data, list):
-            raise ValueError("Response is not a list of companies")
-        if not data:
-            raise ValueError("No comparable companies found")
-        
-        # Validate each company has required fields
-        required_fields = {"name", "valuation_musd", "arr_musd", "funding_musd", "hq_country"}
-        for company in data:
-            if not isinstance(company, dict):
-                raise ValueError("Each comparable must be an object")
-            missing = required_fields - set(company.keys())
-            if missing:
-                raise ValueError(f"Company missing required fields: {missing}")
+        parsed = json.loads(json_str)
 
-        return data
+        comparables = parsed.get("comparables") if isinstance(parsed, dict) else parsed
+        stage_benchmarks = parsed.get("stage_benchmarks", {}) if isinstance(parsed, dict) else {}
+
+        if not isinstance(comparables, list):
+            raise ValueError("Expected a list of comparables in response")
+
+        # --- Compute Local Industry-Level Aggregates ---
+        industry_summary = {}
+        for c in comparables:
+            industry = c.get("industry", "Unknown")
+            region = c.get("hq", "Unknown")
+
+            key = (industry, region)
+            if key not in industry_summary:
+                industry_summary[key] = {
+                    "industry": industry,
+                    "region": region,
+                    "burns": [],
+                    "cacs": [],
+                    "ltvs": [],
+                    "runways": [],
+                    "churns": [],
+                    "retentions": [],
+                    "tams": [],
+                    "sams": [],
+                    "soms": []
+                }
+
+            def safe_val(x):
+                return float(x) if isinstance(x, (int, float)) else None
+
+            entry = industry_summary[key]
+            entry["burns"].append(safe_val(c.get("burn_rate_usd_month")))
+            entry["cacs"].append(safe_val(c.get("cac_usd")))
+            entry["ltvs"].append(safe_val(c.get("ltv_usd")))
+            entry["runways"].append(safe_val(c.get("runway_months")))
+            entry["churns"].append(safe_val(c.get("churn_pct")))
+            entry["retentions"].append(safe_val(c.get("retention_pct")))
+            entry["tams"].append(safe_val(c.get("tam_usd")))
+            entry["sams"].append(safe_val(c.get("sam_usd")))
+            entry["soms"].append(safe_val(c.get("som_usd")))
+
+        # Convert lists into averages
+        def avg(lst):
+            lst = [x for x in lst if x is not None]
+            return round(sum(lst) / len(lst), 1) if lst else None
+
+        aggregated = {}
+        for (industry, region), data in industry_summary.items():
+            aggregated[f"{industry} ({region})"] = {
+                "region": region,
+                "avg_burn_usd_month": avg(data["burns"]),
+                "avg_cac_usd": avg(data["cacs"]),
+                "avg_ltv_usd": avg(data["ltvs"]),
+                "avg_runway_months": avg(data["runways"]),
+                "avg_churn_pct": avg(data["churns"]),
+                "avg_retention_pct": avg(data["retentions"]),
+                "avg_tam_usd": avg(data["tams"]),
+                "avg_sam_usd": avg(data["sams"]),
+                "avg_som_usd": avg(data["soms"]),
+            }
+
+        # Merge GPT's benchmarks (if any) into our aggregates
+        merged_benchmarks = {**stage_benchmarks, **aggregated}
+
+        return {"comparables": comparables, "stage_benchmarks": merged_benchmarks}
 
     except Exception as e:
-        print(f"❌ Market analysis failed: {str(e)}")
-        print("Raw output snippet:", (text[:200] if 'text' in locals() else "No output generated"))
+        print(f"❌ Market analysis failed: {e}")
         raise ValueError(f"Failed to generate market analysis: {str(e)}")
+
+
 
 # Error handling decorator
 def handle_errors(f):
@@ -327,62 +390,62 @@ def market_analyzer():
     if request.method == "POST":
         file = request.files.get("file")
 
+        # --- Basic file validation ---
         if not file or not file.filename:
             raise ValueError("Please upload a PDF file")
 
         if not file.filename.lower().endswith('.pdf'):
             raise ValueError("Only PDF files are allowed")
 
+        # --- Save uploaded file ---
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        # Extract text & generate comparables
+        # --- Extract and analyze ---
         deck_text = extract_text(filepath)
-        comparables = generate_market_analysis(deck_text)
-        
+        analysis = generate_market_analysis(deck_text)
+
+        # analysis now looks like: {"comparables": [...], "stage_benchmarks": {...}}
+        comparables = analysis.get("comparables", [])
+        benchmarks = analysis.get("stage_benchmarks", {})
+
         if not comparables:
             return render_template(
                 "error.html",
                 error="Could not generate market analysis. Please try again."
             )
-        
-        # Compute averages
-        vals = [c.get("valuation_musd", 0) for c in comparables if isinstance(c.get("valuation_musd"), (int, float))]
-        arrs = [c.get("arr_musd", 0) for c in comparables if isinstance(c.get("arr_musd"), (int, float))]
-        avg_val = round(sum(vals) / len(vals), 1) if vals else 0
-        avg_arr = round(sum(arrs) / len(arrs), 1) if arrs else 0
 
-        # Persist record (correct indentation)
+        # --- Optional: Compute summary stats (averages) ---
+        vals = [c.get("valuation_usd", 0) for c in comparables if isinstance(c.get("valuation_usd"), (int, float))]
+        revs = [c.get("revenue_usd", 0) for c in comparables if isinstance(c.get("revenue_usd"), (int, float))]
+        avg_val = round(sum(vals) / len(vals), 1) if vals else 0
+        avg_rev = round(sum(revs) / len(revs), 1) if revs else 0
+
+        # --- Persist the full analysis in database ---
         record = AnalysisRecord(
             startup="Uploaded Pitch Deck",
             industry="",
             analysis_type="market",
             result_path="",
-            json_data=json.dumps(comparables)
+            json_data=json.dumps(analysis)  # includes both comparables + benchmarks
         )
         db.session.add(record)
         db.session.commit()
 
-        # Render dynamic result
+        # --- Render results ---
         return render_template(
             "market_result.html",
             company="Uploaded Pitch Deck",
-            comparables=[
-                {
-                    "name": c.get("name"),
-                    "valuation": c.get("valuation_musd"),
-                    "arr": c.get("arr_musd"),
-                    "funding": c.get("funding_musd"),
-                    "hq": c.get("hq_country"),
-                }
-                for c in comparables
-            ],
+            comparables=comparables,
+            stage_benchmarks=benchmarks,
             avg_valuation=avg_val,
-            avg_arr=avg_arr,
+            avg_revenue=avg_rev,
         )
 
+    # --- GET request: show upload form ---
     return render_template("market_analyzer.html")
+
 
 # --- Run ---
 if __name__ == "__main__":
