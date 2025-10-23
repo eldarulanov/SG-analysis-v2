@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard – VC Intelligence</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('index') }}">← Home</a>
+    <h1>Saved Analyses</h1>
+  </nav>
+
+  <main class="dashboard-container">
+    {% if records %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Startup</th>
+          <th>Type</th>
+          <th>Industry</th>
+          <th>Result</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td>{{ r.created_at if r.created_at is defined else '—' }}</td>
+          <td>{{ r.startup or '—' }}</td>
+          <td>{{ r.analysis_type or '—' }}</td>
+          <td>{{ r.industry or '—' }}</td>
+          <td>
+            {% if r.result_path %}
+              <a href="{{ url_for('download_file', filename=r.result_path) }}">Download</a>
+            {% else %}
+              <small>No file</small>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.json_data %}
+              <a href="#" class="view-json" data-json='{{ r.json_data|tojson }}'>View JSON</a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p>No analyses saved yet.</p>
+    {% endif %}
+  </main>
+
+  <script>
+/* Safely show JSON stored on the element's data-json attribute */
+function _showJsonFromElem(el){
+  try{
+    var raw = el.getAttribute('data-json');
+    var data = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+    alert(JSON.stringify(data, null, 2));
+  }catch(err){
+    alert('Invalid JSON: ' + err);
+  }
+}
+
+document.addEventListener('click', function(ev){
+  var t = ev.target;
+  if(t && t.classList && t.classList.contains('view-json')){
+    ev.preventDefault();
+    _showJsonFromElem(t);
+  }
+});
+</script>
+</body>
+</html>

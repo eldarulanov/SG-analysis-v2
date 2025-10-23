@@ -1,0 +1,11 @@
+flask
+flask_sqlalchemy
+flask_bootstrap
+pymupdf
+openai
+markdown
+weasyprint
+python-dotenv
+pytesseract
+pdf2image
+pillow

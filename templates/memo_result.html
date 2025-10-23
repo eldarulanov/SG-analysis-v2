@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ startup }} Investment Memo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('index') }}" class="nav-link">← Home</a>
+    <h1>{{ startup }} – Investment Memo</h1>
+  </nav>
+
+  <main class="memo-container">
+    {% if memo_html %}
+      <div class="memo-content">
+        {{ memo_html|safe }}
+      </div>
+      {% if download_link %}
+        <p><a href="{{ download_link }}" class="btn">Download PDF</a></p>
+      {% endif %}
+    {% else %}
+      <p>No memo content generated.</p>
+    {% endif %}
+  </main>
+</body>
+</html>

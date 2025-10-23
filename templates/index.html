@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VC Intelligence Platform</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav>
+    <h1>VC Intelligence Platform</h1>
+  </nav>
+
+  <main class="dashboard">
+    <div class="card">
+      <h2>Investment Memo Generator</h2>
+      <p>Upload a startup pitch deck and automatically generate a professional investment memo.</p>
+      <a href="{{ url_for('upload_memo') }}" class="btn">Start</a>
+    </div>
+
+    <div class="card">
+      <h2>Market Analyzer</h2>
+      <p>Upload a pitch deck or enter a startup name to discover comparables, metrics, and benchmarks.</p>
+      <a href="{{ url_for('market_analyzer') }}" class="btn">Explore</a>
+    </div>
+  </main>
+</body>
+</html>

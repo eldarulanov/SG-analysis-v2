@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Pitch Deck</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('index') }}" class="nav-link">← Back</a>
+    <h1>Investment Memo Generator</h1>
+  </nav>
+
+  <main>
+    <form class="upload-form" method="POST" enctype="multipart/form-data">
+      <label for="startup_name">Startup Name</label>
+      <input type="text" id="startup_name" name="startup_name" required>
+
+      <label for="industry">Industry</label>
+      <input type="text" id="industry" name="industry" required>
+
+      <label for="file">Pitch Deck (PDF)</label>
+      <input type="file" id="file" name="file" accept=".pdf" required>
+
+      <button type="submit">Generate Investment Memo</button>
+    </form>
+  </main>
+</body>
+</html>

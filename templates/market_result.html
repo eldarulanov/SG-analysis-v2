@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Market Analysis Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('index') }}" class="nav-link">← Home</a>
+    <h1>Market Analysis</h1>
+  </nav>
+
+  <main class="result-container">
+    <section class="analysis-summary">
+      <h2>Summary Insights for {{ company }}</h2>
+      {% if comparables %}
+        <p>Comparables identified: {{ comparables|length }} companies</p>
+        <p>Average Valuation: ${{ avg_valuation }}M | Average ARR: ${{ avg_arr }}M</p>
+      {% else %}
+        <p>No comparable data found.</p>
+      {% endif %}
+    </section>
+
+    {% if comparables %}
+    <section class="table-section">
+      <h2>Comparable Companies</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Valuation ($M)</th>
+            <th>ARR ($M)</th>
+            <th>Funding ($M)</th>
+            <th>HQ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in comparables %}
+          <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ c.valuation }}</td>
+            <td>{{ c.arr }}</td>
+            <td>{{ c.funding }}</td>
+            <td>{{ c.hq }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

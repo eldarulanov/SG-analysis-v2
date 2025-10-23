@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Aidoc",
+    "valuation_musd": 200,
+    "arr_musd": 20,
+    "funding_musd": 60,
+    "hq_country": "Israel"
+  },
+  {
+    "name": "Zebra Medical Vision",
+    "valuation_musd": 200,
+    "arr_musd": 15,
+    "funding_musd": 50,
+    "hq_country": "Israel"
+  },
+  {
+    "name": "PathAI",
+    "valuation_musd": 500,
+    "arr_musd": 30,
+    "funding_musd": 75,
+    "hq_country": "US"
+  },
+  {
+    "name": "Tempus",
+    "valuation_musd": 5000,
+    "arr_musd": 100,
+    "funding_musd": 520,
+    "hq_country": "US"
+  },
+  {
+    "name": "Butterfly Network",
+    "valuation_musd": 1500,
+    "arr_musd": 50,
+    "funding_musd": 350,
+    "hq_country": "US"
+  }
+]

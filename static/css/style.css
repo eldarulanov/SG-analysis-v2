@@ -1,0 +1,139 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f8f9fa;
+  margin: 0;
+  color: #333;
+}
+
+nav {
+  background-color: #004080;
+  color: white;
+  padding: 15px 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+nav h1 { margin: 0; font-size: 1.2rem; }
+.nav-link { color: white; text-decoration: none; font-size: 0.9rem; }
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px auto;
+  max-width: 800px;
+}
+
+.dashboard {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  padding: 25px;
+  width: 340px;
+  text-align: center;
+}
+
+.card h2 { color: #004080; }
+.btn {
+  display: inline-block;
+  padding: 10px 18px;
+  background: #007bff;
+  color: white;
+  border-radius: 5px;
+  text-decoration: none;
+  margin-top: 12px;
+}
+.btn:hover { background: #0056b3; }
+
+.upload-form {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.upload-form label { margin-top: 10px; font-weight: bold; }
+.upload-form input, .upload-form button {
+  margin-top: 5px;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+.upload-form button {
+  background: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-top: 20px;
+}
+.upload-form button:hover { background: #0056b3; }
+
+.result-container {
+  width: 90%;
+  max-width: 900px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 25px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+th { background: #f1f3f5; }
+
+.chart-placeholder {
+  border: 2px dashed #ccc;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-style: italic;
+  margin-top: 10px;
+}
+
+/* Add these styles to your existing CSS */
+.error-container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+    text-align: center;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.error-message {
+    margin: 20px 0;
+    padding: 15px;
+    background: #fff5f5;
+    border-left: 4px solid #f56565;
+    border-radius: 4px;
+    color: #c53030;
+}
+
+.error-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
