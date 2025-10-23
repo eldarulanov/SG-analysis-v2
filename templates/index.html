@@ -19,8 +19,15 @@
 
     <div class="card">
       <h2>Market Analyzer</h2>
-      <p>Upload a pitch deck or enter a startup name to discover comparables, metrics, and benchmarks.</p>
+      <p>Upload a pitch deck to discover comparables, metrics, and benchmarks.</p>
       <a href="{{ url_for('market_analyzer') }}" class="btn">Explore</a>
+    </div>
+
+    <!-- 🧭 New Card for Dashboard Access -->
+    <div class="card">
+      <h2>Saved Analyses & Reports</h2>
+      <p>View all generated memos, comparables, and industry insights in one place.</p>
+      <a href="{{ url_for('dashboard') }}" class="btn">Open Dashboard</a>
     </div>
   </main>
 </body>

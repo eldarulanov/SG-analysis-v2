@@ -12,7 +12,7 @@ from pdf2image import convert_from_path
 from PIL import Image
 from functools import wraps
 from werkzeug.utils import secure_filename
-from models import db, AnalysisRecord
+from models import db, AnalysisRecord, InvestmentMemo, ComparableCompany, IndustryBenchmark
 
 
 # --- Setup ---
@@ -228,7 +228,7 @@ Pitch Deck:
         industry_summary = {}
         for c in comparables:
             industry = c.get("industry", "Unknown")
-            region = c.get("hq", "Unknown")
+            region = c.get("hq", "Unknown") or c.get("hq_country", "Unknown")
 
             key = (industry, region)
             if key not in industry_summary:
@@ -247,13 +247,16 @@ Pitch Deck:
                 }
 
             def safe_val(x):
-                return float(x) if isinstance(x, (int, float)) else None
+                try:
+                    return float(x) if x is not None else None
+                except Exception:
+                    return None
 
             entry = industry_summary[key]
-            entry["burns"].append(safe_val(c.get("burn_rate_usd_month")))
-            entry["cacs"].append(safe_val(c.get("cac_usd")))
-            entry["ltvs"].append(safe_val(c.get("ltv_usd")))
-            entry["runways"].append(safe_val(c.get("runway_months")))
+            entry["burns"].append(safe_val(c.get("burn_rate_usd_month") or c.get("burn_rate")))
+            entry["cacs"].append(safe_val(c.get("cac_usd") or c.get("cac")))
+            entry["ltvs"].append(safe_val(c.get("ltv_usd") or c.get("ltv")))
+            entry["runways"].append(safe_val(c.get("runway_months") or c.get("runway")))
             entry["churns"].append(safe_val(c.get("churn_pct")))
             entry["retentions"].append(safe_val(c.get("retention_pct")))
             entry["tams"].append(safe_val(c.get("tam_usd")))
@@ -313,8 +316,39 @@ def index():
     
 @app.route("/dashboard")
 def dashboard():
-    records = AnalysisRecord.query.order_by(AnalysisRecord.created_at.desc()).all()
-    return render_template("dashboard.html", records=records)
+    memos = InvestmentMemo.query.order_by(InvestmentMemo.created_at.desc()).all()
+    comps = ComparableCompany.query.order_by(ComparableCompany.created_at.desc()).limit(20).all()
+
+    # Compute high-level summary
+    industries = {}
+    for c in comps:
+        if not c.industry:
+            continue
+        if c.industry not in industries:
+            industries[c.industry] = {"count": 0, "avg_valuation": [], "avg_revenue": []}
+        industries[c.industry]["count"] += 1
+        if c.valuation_usd:
+            industries[c.industry]["avg_valuation"].append(c.valuation_usd)
+        if c.revenue_usd:
+            industries[c.industry]["avg_revenue"].append(c.revenue_usd)
+
+    industry_summary = []
+    for ind, vals in industries.items():
+        def avg(x): return round(sum(x) / len(x), 1) if x else 0
+        industry_summary.append({
+            "industry": ind,
+            "count": vals["count"],
+            "avg_valuation": avg(vals["avg_valuation"]),
+            "avg_revenue": avg(vals["avg_revenue"]),
+        })
+
+    return render_template(
+        "dashboard.html",
+        memos=memos,
+        comparables=comps,
+        industry_summary=industry_summary
+    )
+
 
 # -------- Investment Memo Generator --------
 @app.route("/upload_memo", methods=["GET", "POST"])
@@ -359,7 +393,15 @@ def upload_memo():
         except Exception as e:
             print("⚠️ PDF generation failed:", e)
 
-        # Persist record (correct indentation)
+        # Persist both legacy log and new InvestmentMemo (moved inside function)
+        memo = InvestmentMemo(
+            startup_name=startup_name,
+            industry=industry,
+            memo_html=memo_html,
+            pdf_path=output_filename
+        )
+        db.session.add(memo)
+
         record = AnalysisRecord(
             startup=startup_name,
             industry=industry,
@@ -370,6 +412,7 @@ def upload_memo():
         db.session.add(record)
         db.session.commit()
 
+
         return render_template(
             "memo_result.html",
             startup=startup_name,
@@ -378,6 +421,60 @@ def upload_memo():
         )
 
     return render_template("upload_memo.html")
+
+
+@app.route("/industry_report/<industry>")
+@handle_errors
+def industry_report(industry):
+    comps = ComparableCompany.query.filter(ComparableCompany.industry.ilike(f"%{industry}%")).all()
+    memos = InvestmentMemo.query.filter(InvestmentMemo.industry.ilike(f"%{industry}%")).all()
+
+    if not comps and not memos:
+        return render_template("error.html", error=f"No data found for {industry}")
+
+    # Build structured summary for GPT
+    comp_data = [
+        {
+            "name": c.name, "stage": c.stage, "hq": c.hq,
+            "valuation_usd": c.valuation_usd, "revenue_usd": c.revenue_usd,
+            "capital_raised_usd": c.capital_raised_usd
+        }
+        for c in comps
+    ]
+
+    prompt = f"""
+You are a venture capital industry analyst.
+Using the following company data and investment memos, write an industry report for {industry}.
+
+Comparable companies:
+{json.dumps(comp_data[:10], indent=2)}
+
+Investment Memos:
+{[m.memo_html[:1000] for m in memos[:3]]}
+
+Include sections for:
+- Market Overview
+- Funding Trends
+- Competitive Landscape
+- Benchmarks & Metrics
+- Future Opportunities
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4,
+    )
+
+    report_text = _extract_response_text(response)
+    report_html = markdown.markdown(report_text or "")
+
+    return render_template(
+        "industry_report.html",
+        industry=industry,
+        report_html=report_html
+    )
+
 
 @app.route("/download/<filename>")
 def download_file(filename):
@@ -417,21 +514,44 @@ def market_analyzer():
             )
 
         # --- Optional: Compute summary stats (averages) ---
-        vals = [c.get("valuation_usd", 0) for c in comparables if isinstance(c.get("valuation_usd"), (int, float))]
-        revs = [c.get("revenue_usd", 0) for c in comparables if isinstance(c.get("revenue_usd"), (int, float))]
+        vals = [ (c.get("valuation_usd") or c.get("valuation_musd") or 0) for c in comparables if isinstance((c.get("valuation_usd") or c.get("valuation_musd")), (int, float))]
+        revs = [ (c.get("revenue_usd") or c.get("arr_musd") or 0) for c in comparables if isinstance((c.get("revenue_usd") or c.get("arr_musd")), (int, float))]
         avg_val = round(sum(vals) / len(vals), 1) if vals else 0
         avg_rev = round(sum(revs) / len(revs), 1) if revs else 0
 
-        # --- Persist the full analysis in database ---
+        # --- Persist comparables to the new table (moved inside function) ---
+        for c in comparables:
+            name = c.get("name") or c.get("company") or c.get("company_name")
+            stage = c.get("stage")
+            hq = c.get("hq_country") or c.get("hq") or c.get("country")
+            industry = c.get("industry")
+            valuation = c.get("valuation_usd") or c.get("valuation_musd")
+            revenue = c.get("revenue_usd") or c.get("arr_musd")
+            capital = c.get("capital_raised_usd") or c.get("funding_musd") or c.get("funding_usd")
+
+            company = ComparableCompany(
+                name=name,
+                stage=stage,
+                hq=hq,
+                industry=industry,
+                valuation_usd=valuation,
+                revenue_usd=revenue,
+                capital_raised_usd=capital,
+                associated_startup="Uploaded Pitch Deck"
+            )
+            db.session.add(company)
+
+        # Also save legacy record for logging
         record = AnalysisRecord(
             startup="Uploaded Pitch Deck",
             industry="",
             analysis_type="market",
             result_path="",
-            json_data=json.dumps(analysis)  # includes both comparables + benchmarks
+            json_data=json.dumps(comparables)
         )
         db.session.add(record)
         db.session.commit()
+
 
         # --- Render results ---
         return render_template(

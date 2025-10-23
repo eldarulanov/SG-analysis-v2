@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ industry }} Industry Report</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('dashboard') }}">← Dashboard</a>
+    <h1>{{ industry }} Industry Report</h1>
+  </nav>
+  <main>
+    <article class="report">
+      {{ report_html|safe }}
+    </article>
+  </main>
+</body>
+</html>

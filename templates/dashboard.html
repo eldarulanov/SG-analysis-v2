@@ -2,47 +2,53 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard – VC Intelligence</title>
+  <title>Dashboard – VC Intelligence Platform</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #fafafa; color: #222; margin: 30px; }
+    nav { margin-bottom: 20px; }
+    h1 { font-size: 1.8rem; margin-bottom: 10px; }
+    h2 { margin-top: 40px; color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; font-size: 0.9em; }
+    th { background: #f3f4f6; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.03em; }
+    tr:hover { background: #f9f9f9; }
+    .btn { padding: 6px 10px; background: #007bff; color: white; border-radius: 4px; text-decoration: none; font-size: 0.85em; }
+    .btn:hover { background: #0056b3; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+    .summary-table { margin-top: 10px; }
+  </style>
 </head>
 <body>
   <nav>
-    <a href="{{ url_for('index') }}">← Home</a>
-    <h1>Saved Analyses</h1>
+    <a href="{{ url_for('index') }}" class="btn">← Home</a>
+    <h1>Dashboard</h1>
   </nav>
 
-  <main class="dashboard-container">
-    {% if records %}
+  <!-- Section 1: Investment Memos -->
+  <section>
+    <h2>Investment Memos</h2>
+    {% if memos %}
     <table>
       <thead>
         <tr>
           <th>Date</th>
           <th>Startup</th>
-          <th>Type</th>
           <th>Industry</th>
-          <th>Result</th>
-          <th>Actions</th>
+          <th>Report</th>
         </tr>
       </thead>
       <tbody>
-        {% for r in records %}
+        {% for m in memos %}
         <tr>
-          <td>{{ r.created_at if r.created_at is defined else '—' }}</td>
-          <td>{{ r.startup or '—' }}</td>
-          <td>{{ r.analysis_type or '—' }}</td>
-          <td>{{ r.industry or '—' }}</td>
+          <td>{{ m.created_at.strftime('%Y-%m-%d') }}</td>
+          <td>{{ m.startup_name }}</td>
+          <td>{{ m.industry }}</td>
           <td>
-            {% if r.result_path %}
-              <a href="{{ url_for('download_file', filename=r.result_path) }}">Download</a>
+            {% if m.pdf_path %}
+              <a href="{{ url_for('download_file', filename=m.pdf_path) }}" class="btn">Download</a>
             {% else %}
-              <small>No file</small>
-            {% endif %}
-          </td>
-          <td>
-            {% if r.json_data %}
-              <a href="#" class="view-json" data-json='{{ r.json_data|tojson }}'>View JSON</a>
-            {% else %}
-              —
+              <em>No PDF</em>
             {% endif %}
           </td>
         </tr>
@@ -50,29 +56,77 @@
       </tbody>
     </table>
     {% else %}
-      <p>No analyses saved yet.</p>
+      <p>No investment memos yet.</p>
     {% endif %}
-  </main>
+  </section>
 
-  <script>
-/* Safely show JSON stored on the element's data-json attribute */
-function _showJsonFromElem(el){
-  try{
-    var raw = el.getAttribute('data-json');
-    var data = (typeof raw === 'string') ? JSON.parse(raw) : raw;
-    alert(JSON.stringify(data, null, 2));
-  }catch(err){
-    alert('Invalid JSON: ' + err);
-  }
-}
+  <!-- Section 2: Industry Summary -->
+  <section>
+    <h2>Industry Overview</h2>
+    {% if industry_summary %}
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Industry</th>
+          <th>Companies Analyzed</th>
+          <th>Avg Valuation ($M)</th>
+          <th>Avg Revenue ($M)</th>
+          <th>Report</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in industry_summary %}
+        <tr>
+          <td>{{ s.industry }}</td>
+          <td>{{ s.count }}</td>
+          <td>{{ s.avg_valuation }}</td>
+          <td>{{ s.avg_revenue }}</td>
+          <td>
+            <a href="{{ url_for('industry_report', industry=s.industry) }}" class="btn">Generate Report</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p>No industries analyzed yet.</p>
+    {% endif %}
+  </section>
 
-document.addEventListener('click', function(ev){
-  var t = ev.target;
-  if(t && t.classList && t.classList.contains('view-json')){
-    ev.preventDefault();
-    _showJsonFromElem(t);
-  }
-});
-</script>
+  <!-- Section 3: Recent Comparable Companies -->
+  <section>
+    <h2>Recent Comparable Companies</h2>
+    {% if comparables %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Company</th>
+          <th>Stage</th>
+          <th>HQ</th>
+          <th>Industry</th>
+          <th>Valuation ($)</th>
+          <th>Revenue ($)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in comparables %}
+        <tr>
+          <td>{{ c.created_at.strftime('%Y-%m-%d') }}</td>
+          <td>{{ c.name }}</td>
+          <td>{{ c.stage }}</td>
+          <td>{{ c.hq }}</td>
+          <td>{{ c.industry }}</td>
+          <td>{{ c.valuation_usd }}</td>
+          <td>{{ c.revenue_usd }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p>No comparable company data yet.</p>
+    {% endif %}
+  </section>
+
 </body>
 </html>
